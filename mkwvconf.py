@@ -2,13 +2,24 @@
 #depends: mobile....., python, pyxml
 
 import sys
+import string
 from xml import xpath
 from xml.dom.minidom import parse
 
 xmlPath = '/usr/share/mobile-broadband-provider-info/serviceproviders.xml'
 
 def getCountryCode():
-    input = raw_input("\nGet providers for which country code? (us, at, de, ...): ")
+    l = []
+    nodes = getNodesFromXml("country/@code")
+    for n in nodes:
+        l.append(str(n.value))
+    print "\nAvailable country codes:"
+    print l
+    
+    input = ""
+    
+    while not input in l:
+        input = raw_input("\nGet providers for which country code? : ")
     return input
     
 def getNodesFromXml(xquery):
@@ -31,8 +42,18 @@ def chooseProvider(providers):
         print str(k) + ": " + v
         if k > max:
             max = k
+            
+    input = -1
         
-    input = getUserInput("Choose a provider [0-" + str(max) + "]:")
+    while input > max or input < 0:
+        inputStr = getUserInput("Choose a provider [0-" + str(max) + "]:")
+        try:
+            input = string.atoi(inputStr)
+            if input < 0 or input > max:
+                print "Input needs to be between 0 and " + str(max)
+        except:
+            input = -1
+            print "Input needs to be an integer."
         
     return  providers[int(input)]
     
@@ -41,7 +62,7 @@ def makeConfig(countryCode, chosenProvider):
     parameters = parseProviderNode(nodes[0])
     
     parameters["modem"] =  getModemDevice()
-    parameters["profileName"] = "DefaultProfile"
+    parameters["profileName"] = getUserInput("Enter name for configuration: ","DefaultProfile")
 
     print "\n\nDone. Paste the following into /etc/wvdial.conf and run 'wvdial " + parameters["profileName"] + "' to start the connection.\n\n"
     print formatConfig(parameters)
@@ -70,7 +91,10 @@ Stupid Mode = 1
     
 def getModemDevice():
     defaultLocation = "/dev/ttyUSB0"
-    input = getUserInput("Enter modem location (default is /dev/ttyUSB0): ",  defaultLocation)
+    input = "initialValue"
+    
+    while not input.startswith("/dev/") or len(input) == 0:
+        input = getUserInput("Enter modem location (default is /dev/ttyUSB0): ",  defaultLocation)
     
     if len(input.strip()) == 0:
         input = defaultLocation
