@@ -47,6 +47,13 @@ def makeConfig(countryCode, chosenProvider):
     print formatConfig(parameters)
     
 def formatConfig(parameters):
+    
+    if not 'usr' in parameters:
+        parameters['usr'] = ""
+        
+    if not 'pw' in parameters:
+        parameters['pw'] = ""
+    
     return \
 """[%(profileName)s]
 Modem Type = Analog Modem

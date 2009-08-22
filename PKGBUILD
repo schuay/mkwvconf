@@ -23,6 +23,6 @@ build() {
 
   #install
   mkdir -p "$pkgdir/usr/bin/"
-  cp mkwvconf.py "$pkgdir/usr/bin/"
+  cp mkwvconf.py "$pkgdir/usr/bin/mkwvconf"
 }
 
