@@ -76,7 +76,7 @@ def formatConfig(parameters):
         parameters['pw'] = ""
     
     return \
-"""[%(profileName)s]
+"""[Dialer %(profileName)s]
 Modem Type = Analog Modem
 Phone = *99#
 ISDN = 0
