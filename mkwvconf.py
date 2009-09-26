@@ -1,19 +1,24 @@
 #!/usr/bin/python
-#depends: mobile....., python, pyxml
 
 import sys
 import string
+import os
 from xml import xpath
 from xml.dom.minidom import parse
 
 xmlPath = '/usr/share/mobile-broadband-provider-info/serviceproviders.xml'
+configPath = '/etc/wvdial.conf'
+
+def clrScr():
+    os.system('clear')
 
 def getCountryCode():
     l = []
     nodes = getNodesFromXml("country/@code")
     for n in nodes:
         l.append(str(n.value))
-    print "\nAvailable country codes:"
+    clrScr()
+    print "\nAvailable country codes:\n"
     print l
     
     input = ""
@@ -37,7 +42,8 @@ def getProviders(countryCode):
     
 def chooseProvider(providers):
     max =0
-    print "\nProviders for '" + countryCode + "':"
+    clrScr()
+    print "\nProviders for '" + countryCode + "':\n"
     for k, v in providers.items():
         print str(k) + ": " + v
         if k > max:
@@ -64,8 +70,41 @@ def makeConfig(countryCode, chosenProvider):
     parameters["modem"] =  getModemDevice()
     parameters["profileName"] = getUserInput("Enter name for configuration: ","DefaultProfile")
 
-    print "\n\nDone. Paste the following into /etc/wvdial.conf and run 'wvdial " + parameters["profileName"] + "' to start the connection.\n\n"
-    print formatConfig(parameters)
+    editConf = raw_input("\nDo you want me to try to modify " + configPath + " (you will need superuser rights)? Y/n: ")
+    clrScr()
+    if editConf in ["", "Y",  "y"]:
+        writeConfig(parameters)
+    else:
+        print "\n\nDone. Insert the following into " + configPath + " and run 'wvdial " + parameters["profileName"] + "' to start the connection.\n\n"
+        print formatConfig(parameters)
+    
+def writeConfig(parameters):    
+    if not os.path.exists(configPath):
+        print "\nWarning: " + configPath + " doesn't exist, creating new file."        
+        f = open(configPath, 'w')
+        f.close()
+    
+    f = open(configPath, 'r')
+    text = f.read()
+    f.close()
+    
+    snippetStart = text.find("[Dialer %(profileName)s]" % parameters)
+    if snippetStart != -1:
+        snippetEnd = text.find("[Dialer ", snippetStart+1)
+        print "\nThe following part of wvdial.conf will be replaced: \n\n" + text[snippetStart:snippetEnd]
+        print "by: \n\n" + formatConfig(parameters)
+        text = text.replace(text[snippetStart:snippetEnd], formatConfig(parameters))
+    else:
+        print "\nThe following will be appended to wvdial.conf: \n\n" + formatConfig(parameters)
+        text += "\n" + formatConfig(parameters)
+    
+    editConf = raw_input("Write to file? Y/n: ")
+    if editConf in ["", "Y",  "y"]:
+        f = open(configPath, 'w')
+        f.write(text)
+        f.close()
+        
+        print "wvdial.conf edited successfully."
     
 def formatConfig(parameters):
     
