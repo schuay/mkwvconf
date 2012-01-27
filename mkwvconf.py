@@ -95,10 +95,42 @@ Further reading on APNs can be found here: http://mail.gnome.org/archives/networ
 
     self.chosenProvider = self.providers[int(input)]
 
+  def selectApn(self, node):
+      """takes a provider node, lets user select one apn (if several exist) and returns the chosen node"""
+      apnNode = node.getElementsByTagName("apn")[0]
+      apn = apnNode.getAttribute("value")
+      self.parameters["apn"] = apn
+
+      apns = node.getElementsByTagName("apn")
+      apnnames = [ n.getAttribute("value") for n in apns ]
+
+      apncount = len(apns)
+      if apncount == 1:
+          return apns[0]
+
+      print "Available APNs:\n"
+      for k, v in zip(range(apncount), apnnames):
+          print str(k) + ": " + v
+
+      input = -1
+      max = apncount - 1
+      while input > max or input < 0:
+          inputStr = self.getUserInput("Choose an APN [0-" + str(max) + "]:")
+          try:
+              input = string.atoi(inputStr)
+              if input < 0 or input > max:
+                  print "Input needs to be between 0 and " + str(max)
+          except:
+              input = -1
+              print "Input needs to be an integer."
+
+      return apns[int(input)]
+
   def makeConfig(self):
     """get final information from user and assembles configuration section. the configuration is either written to wvdial.conf or printed for manual insertion"""
     nodes = self.getNodesFromXml("country[@code='" + self.countryCode +  "']/provider[name='" + self.chosenProvider + "']")
-    self.parseProviderNode(nodes[0])
+    apn = self.selectApn(nodes[0])
+    self.parseProviderNode(apn)
 
     self.parameters["modem"] = self.getModemDevice()
     self.parameters["profileName"] = self.getUserInput("Enter name for configuration: ","DefaultProfile")
@@ -187,11 +219,10 @@ Stupid Mode = 1
         accept = raw_input("Your choice: '" + inp + "'. Is this correct? Y/n: ")
     return inp
 
-  def parseProviderNode(self, node):
+  def parseProviderNode(self, apnNode):
     """fill parameter dictionary from provider xml node"""
     self.parameters = {}
 
-    apnNode = node.getElementsByTagName("apn")[0]
     apn = apnNode.getAttribute("value")
     self.parameters["apn"] = apn
 
