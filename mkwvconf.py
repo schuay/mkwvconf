@@ -67,12 +67,11 @@ Further reading on APNs can be found here: http://mail.gnome.org/archives/networ
 	return xpath.Evaluate(xquery, self.doc.documentElement)
 
   def getProviders(self):
-	"""fills dictionary of providers for the specified country code"""
+	"""fills dictionary of providers for the specified country code with entries containing {index: providername}"""
 	nodes = self.getNodesFromXml('country[@code=\'' + self.countryCode +  '\']/provider/name')
-	i = 0
-	for n in nodes:
-		self.providers[i] = n.firstChild.nodeValue
-		i+=1
+	providernames = [ n.firstChild.nodeValue for n in nodes ]
+	indices = range(len(providernames))
+	self.providers = dict(zip(indices, providernames))
 	  
   def chooseProvider(self):
 	"""returns provider chosen by user"""
