@@ -75,13 +75,11 @@ Further reading on APNs can be found here: http://mail.gnome.org/archives/networ
 	  
   def chooseProvider(self):
 	"""returns provider chosen by user"""
-	max =0
+	max = len(self.providers) - 1
 	os.system('clear')
 	print "\nProviders for '" + self.countryCode + "':\n"
 	for k, v in self.providers.items():
 		print str(k) + ": " + v
-		if k > max:
-			max = k
 			
 	input = -1
 		
