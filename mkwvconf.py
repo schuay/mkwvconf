@@ -74,7 +74,7 @@ Further reading on APNs can be found here: http://mail.gnome.org/archives/networ
 	self.providers = dict(zip(indices, providernames))
 	  
   def chooseProvider(self):
-	"""returns provider chosen by user"""
+	"""lets user choose a provider and sets self.chosenProvider to the providername"""
 	max = len(self.providers) - 1
 	os.system('clear')
 	print "\nProviders for '" + self.countryCode + "':\n"
