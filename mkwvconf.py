@@ -20,11 +20,6 @@ class Mkwvconf:
   # class members
   #########
 
-  parameters = {}
-  providers = {}
-  countryCode = ""
-  chosenProvider = ""
-
   introMessage = """
 mkwvconf automatically generates a dialer section for use in wvdial.conf based on mobile-broadband-provider-info.
 
@@ -69,40 +64,39 @@ Further reading on APNs can be found here: http://mail.gnome.org/archives/networ
     """returns results of xquery as a list"""
     return xpath.Evaluate(xquery, self.doc.documentElement)
 
-  def getProviders(self):
-    """fills dictionary of providers for the specified country code with entries containing {index: providername}"""
-    nodes = self.getNodesFromXml('country[@code=\'' + self.countryCode +  '\']/provider/name')
-    providernames = [ n.firstChild.nodeValue for n in nodes ]
-    indices = range(len(providernames))
-    self.providers = dict(zip(indices, providernames))
+  def getProviders(self, countryCode):
+    """returns list of providers for countryCode"""
+    nodes = self.getNodesFromXml('country[@code=\'' + countryCode +  '\']/provider/name')
+    return [ n.firstChild.nodeValue for n in nodes ]
 
-  def chooseProvider(self):
-    """lets user choose a provider and sets self.chosenProvider to the providername"""
-    max = len(self.providers) - 1
+  def selectProvider(self, countryCode):
+    """lets user choose a provider and returns the chosen provider name"""
+    providers = self.getProviders(countryCode)
+    pcount = len(providers)
+    indexedproviders = zip(range(pcount), providers)
+
     os.system('clear')
-    print "\nProviders for '" + self.countryCode + "':\n"
-    for k, v in self.providers.items():
+    print "\nProviders for '" + countryCode + "':\n"
+    for k, v in indexedproviders:
         print str(k) + ": " + v
 
-    input = -1
-
-    while input > max or input < 0:
-        inputStr = self.getUserInput("Choose a provider [0-" + str(max) + "]:")
+    provider = -1
+    while provider >= pcount or provider < 0:
+        inputStr = self.getUserInput("Choose a provider [0-" + str(pcount - 1) + "]:")
         try:
-            input = string.atoi(inputStr)
-            if input < 0 or input > max:
-                print "Input needs to be between 0 and " + str(max)
+            provider = string.atoi(inputStr)
+            if provider < 0 or provider >= pcount:
+                print "Input needs to be between 0 and " + str(pcount - 1)
         except:
-            input = -1
+            provider = -1
             print "Input needs to be an integer."
 
-    self.chosenProvider = self.providers[int(input)]
+    return providers[int(provider)]
 
   def selectApn(self, node):
       """takes a provider node, lets user select one apn (if several exist) and returns the chosen node"""
       apnNode = node.getElementsByTagName("apn")[0]
       apn = apnNode.getAttribute("value")
-      self.parameters["apn"] = apn
 
       apns = node.getElementsByTagName("apn")
       apnnames = [ n.getAttribute("value") for n in apns ]
@@ -129,24 +123,24 @@ Further reading on APNs can be found here: http://mail.gnome.org/archives/networ
 
       return apns[int(input)]
 
-  def makeConfig(self):
+  def makeConfig(self, countryCode, provider):
     """get final information from user and assembles configuration section. the configuration is either written to wvdial.conf or printed for manual insertion"""
-    nodes = self.getNodesFromXml("country[@code='" + self.countryCode +  "']/provider[name='" + self.chosenProvider + "']")
-    apn = self.selectApn(nodes[0])
-    self.parseProviderNode(apn)
+    providerNode = self.getNodesFromXml("country[@code='" + countryCode +  "']/provider[name='" + provider + "']")[0]
+    apnNode = self.selectApn(providerNode)
 
-    self.parameters["modem"] = self.getModemDevice()
-    self.parameters["profileName"] = self.getUserInput("Enter name for configuration: ","DefaultProfile")
+    parameters = self.parseProviderNode(apnNode)
+    parameters["modem"] = self.getModemDevice()
+    parameters["profileName"] = self.getUserInput("Enter name for configuration: ","DefaultProfile")
 
     editConf = raw_input("\nDo you want me to try to modify " + self.configPath + " (you will need superuser rights)? Y/n: ")
     os.system('clear')
     if editConf in ["", "Y",  "y"]:
-        self.writeConfig()
+        self.writeConfig(parameters)
     else:
-        print "\n\nDone. Insert the following into " + self.configPath + " and run 'wvdial " + self.parameters["profileName"] + "' to start the connection.\n\n"
-        print self.formatConfig()
+        print "\n\nDone. Insert the following into " + self.configPath + " and run 'wvdial " + parameters["profileName"] + "' to start the connection.\n\n"
+        print self.formatConfig(parameters)
 
-  def writeConfig(self):    
+  def writeConfig(self, parameters):
     """append or replace the configuration section to wvdial.conf"""
     if not os.path.exists(self.configPath):
         print "\nWarning: " + self.configPath + " doesn't exist, creating new file."
@@ -157,15 +151,17 @@ Further reading on APNs can be found here: http://mail.gnome.org/archives/networ
     text = f.read()
     f.close()
 
-    snippetStart = text.find("[Dialer %(profileName)s]" % self.parameters)
+    section = self.formatConfig(parameters)
+
+    snippetStart = text.find("[Dialer %(profileName)s]" % parameters)
     if snippetStart != -1:
         snippetEnd = text.find("[Dialer ", snippetStart+1)
         print "\nThe following part of wvdial.conf will be replaced: \n\n" + text[snippetStart:snippetEnd]
-        print "by: \n\n" + self.formatConfig()
-        text = text.replace(text[snippetStart:snippetEnd], self.formatConfig())
+        print "by: \n\n" + section
+        text = text.replace(text[snippetStart:snippetEnd], section)
     else:
-        print "\nThe following will be appended to wvdial.conf: \n\n" + self.formatConfig()
-        text += "\n" + self.formatConfig()
+        print "\nThe following will be appended to wvdial.conf: \n\n" + section
+        text += "\n" + section
 
     editConf = raw_input("Write to file? Y/n: ")
     if editConf in ["", "Y",  "y"]:
@@ -173,16 +169,16 @@ Further reading on APNs can be found here: http://mail.gnome.org/archives/networ
         f.write(text)
         f.close()
 
-        print "wvdial.conf edited successfully, run 'wvdial " + self.parameters["profileName"] + "' to start the connection.\n\n"
+        print "wvdial.conf edited successfully, run 'wvdial " + parameters["profileName"] + "' to start the connection.\n\n"
 
-  def formatConfig(self):
+  def formatConfig(self, parameters):
     """formats the information contained in parameters into a valid wvdial.conf format"""
 
-    if not 'usr' in self.parameters:
-        self.parameters['usr'] = ""
+    if not 'usr' in parameters:
+        parameters['usr'] = ""
 
-    if not 'pw' in self.parameters:
-        self.parameters['pw'] = ""
+    if not 'pw' in parameters:
+        parameters['pw'] = ""
 
     return \
 """[Dialer %(profileName)s]
@@ -196,7 +192,7 @@ Modem = %(modem)s
 Init1 = ATZ
 Init2 = at+cgdcont=1,"ip","%(apn)s"
 Stupid Mode = 1
-""" % self.parameters
+""" % parameters
 
   def getModemDevice(self):
     """return modem location provided by user"""
@@ -223,31 +219,29 @@ Stupid Mode = 1
     return inp
 
   def parseProviderNode(self, apnNode):
-    """fill parameter dictionary from provider xml node"""
-    self.parameters = {}
+    """return initially filled parameter dictionary from provider xml node"""
+    parameters = {}
 
     apn = apnNode.getAttribute("value")
-    self.parameters["apn"] = apn
+    parameters["apn"] = apn
 
     usrNodes = apnNode.getElementsByTagName("username")
     if len(usrNodes) != 0:
         usr = usrNodes[0].firstChild.nodeValue
-        self.parameters["usr"] = usr
+        parameters["usr"] = usr
 
     pwNodes = apnNode.getElementsByTagName("password")
     if len(pwNodes) != 0:
         pw = pwNodes[0].firstChild.nodeValue
-        self.parameters["pw"] = pw
+        parameters["pw"] = pw
 
-  def getProviderFromUser(self):
-    self.countryCode = self.selectCountryCode()
-    self.getProviders()
-    self.chooseProvider()
+    return parameters
 
 if __name__ == "__main__":
 
   mkwvconf = Mkwvconf()
 
   mkwvconf.displayIntro()
-  mkwvconf.getProviderFromUser()
-  mkwvconf.makeConfig()
+  countryCode = mkwvconf.selectCountryCode()
+  provider = mkwvconf.selectProvider(countryCode)
+  mkwvconf.makeConfig(countryCode, provider)
