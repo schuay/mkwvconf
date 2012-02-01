@@ -45,22 +45,25 @@ Further reading on APNs can be found here: http://mail.gnome.org/archives/networ
     os.system('clear')
     print self.introMessage
 
-  def getCountryCode(self):
-    """displays a list of country codes contained in the provider database from which the user must choose one"""
-    l = []
-    nodes = self.getNodesFromXml("country/@code")
-    for n in nodes:
-        l.append(str(n.value))
+  def getCountryCodes(self):
+    """returns a list of all country codes"""
+    return [ str(n.value) for n in self.getNodesFromXml("country/@code") ]
+
+
+  def selectCountryCode(self):
+    """lets user choose a country code and returns the chosen value"""
+
+    l = self.getCountryCodes()
 
     print "\nAvailable country codes:\n"
     print l
 
-    input = ""
+    country = ""
 
-    while not input in l:
-        input = raw_input("\nGet providers for which country code? : ")
+    while country not in l:
+        country = raw_input("\nGet providers for which country code? : ")
 
-    self.countryCode = input
+    return country
 
   def getNodesFromXml(self, xquery):
     """returns results of xquery as a list"""
@@ -237,7 +240,7 @@ Stupid Mode = 1
         self.parameters["pw"] = pw
 
   def getProviderFromUser(self):
-    self.getCountryCode()
+    self.countryCode = self.selectCountryCode()
     self.getProviders()
     self.chooseProvider()
 
