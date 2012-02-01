@@ -73,25 +73,9 @@ Further reading on APNs can be found here: http://mail.gnome.org/archives/networ
     """lets user choose a provider and returns the chosen provider name"""
     providers = self.getProviders(countryCode)
     pcount = len(providers)
-    indexedproviders = zip(range(pcount), providers)
 
-    os.system('clear')
-    print "\nProviders for '" + countryCode + "':\n"
-    for k, v in indexedproviders:
-        print str(k) + ": " + v
-
-    provider = -1
-    while provider >= pcount or provider < 0:
-        inputStr = self.getUserInput("Choose a provider [0-" + str(pcount - 1) + "]:")
-        try:
-            provider = string.atoi(inputStr)
-            if provider < 0 or provider >= pcount:
-                print "Input needs to be between 0 and " + str(pcount - 1)
-        except:
-            provider = -1
-            print "Input needs to be an integer."
-
-    return providers[int(provider)]
+    index = self.getUserChoice(providers, "Providers for '" + countryCode + "':", "Choose a provider")
+    return providers[index]
 
   def selectApn(self, node):
       """takes a provider node, lets user select one apn (if several exist) and returns the chosen node"""
@@ -103,22 +87,8 @@ Further reading on APNs can be found here: http://mail.gnome.org/archives/networ
       if apncount == 1:
           return apns[0]
 
-      print "Available APNs:\n"
-      for k, v in zip(range(apncount), apnnames):
-          print str(k) + ": " + v
-
-      apn = -1
-      while apn >= apncount or apn < 0:
-          inputStr = self.getUserInput("Choose an APN [0-" + str(apncount - 1) + "]:")
-          try:
-              apn = string.atoi(inputStr)
-              if apn < 0 or apn >= apncount:
-                  print "Input needs to be between 0 and " + str(apncount - 1)
-          except:
-              apn = -1
-              print "Input needs to be an integer."
-
-      return apns[int(apn)]
+      index = self.getUserChoice(apnnames, "Available APNs:", "Choose an APN")
+      return apns[index]
 
   def makeConfig(self, countryCode, provider):
     """get final information from user and assembles configuration section. the configuration is either written to wvdial.conf or printed for manual insertion"""
@@ -203,6 +173,30 @@ Stupid Mode = 1
         input = defaultLocation
 
     return input
+
+  def getUserChoice(self, l, header, prompt):
+    """takes a string list, a text prompt and a header, and returns user choice"""
+
+    print
+    print header
+    print
+
+    count = len(l)
+    for k, v in zip(range(count), l):
+      print str(k) + ": " + v
+
+    choice = -1
+    while choice >= count or choice < 0:
+      inputStr = self.getUserInput(prompt + " [0-" + str(count - 1) + "]:")
+      try:
+          choice = string.atoi(inputStr)
+          if choice < 0 or choice >= count:
+              print "Input needs to be between 0 and " + str(count - 1)
+      except:
+          choice = -1
+          print "Input needs to be an integer."
+
+    return int(choice)
 
   def getUserInput(self, prompt, default=""):
     """utility method for getting user input. displays prompt, optional default fallback"""
