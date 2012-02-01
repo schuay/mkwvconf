@@ -96,8 +96,6 @@ Further reading on APNs can be found here: http://mail.gnome.org/archives/networ
   def selectApn(self, node):
       """takes a provider node, lets user select one apn (if several exist) and returns the chosen node"""
       apnNode = node.getElementsByTagName("apn")[0]
-      apn = apnNode.getAttribute("value")
-
       apns = node.getElementsByTagName("apn")
       apnnames = [ n.getAttribute("value") for n in apns ]
 
@@ -109,19 +107,18 @@ Further reading on APNs can be found here: http://mail.gnome.org/archives/networ
       for k, v in zip(range(apncount), apnnames):
           print str(k) + ": " + v
 
-      input = -1
-      max = apncount - 1
-      while input > max or input < 0:
-          inputStr = self.getUserInput("Choose an APN [0-" + str(max) + "]:")
+      apn = -1
+      while apn >= apncount or apn < 0:
+          inputStr = self.getUserInput("Choose an APN [0-" + str(apncount - 1) + "]:")
           try:
-              input = string.atoi(inputStr)
-              if input < 0 or input > max:
-                  print "Input needs to be between 0 and " + str(max)
+              apn = string.atoi(inputStr)
+              if apn < 0 or apn >= apncount:
+                  print "Input needs to be between 0 and " + str(apncount - 1)
           except:
-              input = -1
+              apn = -1
               print "Input needs to be an integer."
 
-      return apns[int(input)]
+      return apns[int(apn)]
 
   def makeConfig(self, countryCode, provider):
     """get final information from user and assembles configuration section. the configuration is either written to wvdial.conf or printed for manual insertion"""
